@@ -1,2 +1,2 @@
-// Package codec computes ThumbHashes for package thumbhash.
+// Package codec computes ThumbHashes and decodes them for package thumbhash.
 package codec
