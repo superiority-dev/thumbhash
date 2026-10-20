@@ -3,6 +3,7 @@ package codec
 import (
 	"math"
 
+	"github.com/superiority-dev/thumbhash/internal/fdlibm"
 	"github.com/superiority-dev/thumbhash/internal/format"
 )
 
@@ -78,11 +79,11 @@ func Render(dst *[4 * DecodedSize * DecodedSize]float64, hash []byte) (w, h int,
 			l, p, q, a := lDC, pDC, qDC, aDC
 
 			for cx := range nx {
-				fx[cx] = math.Cos(math.Pi / float64(w) * (float64(x) + 0.5) * float64(cx))
+				fx[cx] = fdlibm.Cos(math.Pi / float64(w) * (float64(x) + 0.5) * float64(cx))
 			}
 
 			for cy := range ny {
-				fy[cy] = math.Cos(math.Pi / float64(h) * (float64(y) + 0.5) * float64(cy))
+				fy[cy] = fdlibm.Cos(math.Pi / float64(h) * (float64(y) + 0.5) * float64(cy))
 			}
 
 			for cy, j := 0, 0; cy < ly; cy++ {

@@ -4,6 +4,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/superiority-dev/thumbhash/internal/fdlibm"
 	"github.com/superiority-dev/thumbhash/internal/format"
 )
 
@@ -100,11 +101,11 @@ func (e *Encoder) transform(ch []float64, w, h, nx, ny int) (dc, scale float64) 
 			var f float64
 
 			for x := range w {
-				fx[x] = math.Cos(math.Pi / float64(w) * float64(cx) * (float64(x) + 0.5))
+				fx[x] = fdlibm.Cos(math.Pi / float64(w) * float64(cx) * (float64(x) + 0.5))
 			}
 
 			for y := range h {
-				fy := math.Cos(math.Pi / float64(h) * float64(cy) * (float64(y) + 0.5))
+				fy := fdlibm.Cos(math.Pi / float64(h) * float64(cy) * (float64(y) + 0.5))
 				for x := range w {
 					f += float64(ch[x+y*w] * fx[x] * fy)
 				}
