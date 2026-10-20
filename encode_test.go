@@ -1,11 +1,74 @@
 package thumbhash
 
 import (
+	"bytes"
 	"errors"
 	"image"
 	"math"
 	"testing"
+
+	"github.com/superiority-dev/thumbhash/internal/codec"
+	"github.com/superiority-dev/thumbhash/internal/testimage"
 )
+
+// TestEncodeReference requires every value the encoder rounds, and every hash,
+// to equal the reference's bit for bit, and no hash Encode returns to share
+// memory with a later call's.
+func TestEncodeReference(t *testing.T) {
+	ref, err := testimage.Reference()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var enc Encoder
+
+	cases := testimage.Cases()
+	kept := make([][]byte, len(cases))
+
+	for i, c := range cases {
+		r := ref.Results[i]
+		if r.ID != c.ID {
+			t.Fatalf("result %d is %s, want %s", i, r.ID, c.ID)
+		}
+
+		img := c.Image()
+		if kept[i], err = Encode(img); err != nil {
+			t.Fatalf("%s: %v", c.ID, err)
+		}
+
+		s := img.Bounds().Size()
+		vals, _ := enc.c.Unrounded(codec.Straight(nil, img), s.X, s.Y)
+
+		if len(vals) != len(r.Unrounded) {
+			t.Errorf("%s: %d values, reference has %d", c.ID, len(vals), len(r.Unrounded))
+
+			continue
+		}
+
+		for j, v := range vals {
+			if math.Float64bits(v) != math.Float64bits(r.Unrounded[j]) {
+				t.Errorf("%s: value %d is %v, reference %v", c.ID, j, v, r.Unrounded[j])
+
+				break
+			}
+		}
+
+		hash, err := enc.Encode(img)
+		if err != nil {
+			t.Fatalf("%s: %v", c.ID, err)
+		}
+
+		if !bytes.Equal(hash, r.Hash) {
+			t.Errorf("%s: hash %x, reference %x", c.ID, hash, r.Hash)
+		}
+	}
+
+	for i, c := range cases {
+		if !bytes.Equal(kept[i], ref.Results[i].Hash) {
+			t.Errorf("%s: Encode returned %x, reference %x", c.ID, kept[i], ref.Results[i].Hash)
+		}
+	}
+}
 
 // TestEncodeSize requires ErrEmptyImage for an image with no pixels, even when
 // its other side is too large, ErrImageTooLarge past MaxSize, and no error at
