@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/superiority-dev/thumbhash/internal/codec"
+	"github.com/superiority-dev/thumbhash/internal/format"
 	"github.com/superiority-dev/thumbhash/internal/testimage"
 )
 
@@ -105,3 +106,54 @@ func TestEncodeSize(t *testing.T) {
 		}
 	}
 }
+
+// FuzzEncode requires Encode to accept exactly the sizes up to MaxSize, to
+// return a hash Decode accepts, and to read NRGBA and RGBA as At does, at any
+// origin.
+func FuzzEncode(f *testing.F) {
+	f.Add(int8(0), int8(0), uint8(1), uint8(1), []byte{1, 2, 3, 255})
+	f.Add(int8(-3), int8(5), uint8(100), uint8(75), []byte{200, 100, 50, 255, 0, 0, 0, 0, 255, 255, 255, 128})
+	f.Add(int8(0), int8(0), uint8(0), uint8(5), []byte{0})
+	f.Add(int8(0), int8(0), uint8(101), uint8(1), []byte{0})
+
+	f.Fuzz(func(t *testing.T, x0, y0 int8, w, h uint8, pix []byte) {
+		r := image.Rect(int(x0), int(y0), int(x0)+int(w), int(y0)+int(h))
+
+		// The fuzzed bytes, repeated to fill the image.
+		buf := make([]byte, 4*r.Dx()*r.Dy())
+		if len(pix) > 0 {
+			for i := range buf {
+				buf[i] = pix[i%len(pix)]
+			}
+		}
+
+		for _, img := range []image.Image{
+			&image.NRGBA{Pix: buf, Stride: 4 * r.Dx(), Rect: r},
+			&image.RGBA{Pix: buf, Stride: 4 * r.Dx(), Rect: r},
+		} {
+			hash, err := Encode(img)
+			if ok := w > 0 && h > 0 && w <= MaxSize && h <= MaxSize; (err == nil) != ok {
+				t.Fatalf("%T %v: %v", img, r, err)
+			}
+
+			if err != nil {
+				continue
+			}
+
+			if n := format.Parse(hash).HashLen(); n != len(hash) {
+				t.Fatalf("%T %v: hash %x is %d bytes, its header says %d", img, r, hash, len(hash), n)
+			}
+
+			if _, err := Decode(hash); err != nil {
+				t.Fatalf("%T %v: %v", img, r, err)
+			}
+
+			if at, _ := Encode(atOnly{img}); !bytes.Equal(hash, at) {
+				t.Fatalf("%T %v: %x, through At %x", img, r, hash, at)
+			}
+		}
+	})
+}
+
+// atOnly hides an image's type, so Encode reads it through At.
+type atOnly struct{ image.Image }
