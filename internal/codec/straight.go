@@ -4,6 +4,8 @@ import (
 	"image"
 	"image/color"
 	"slices"
+
+	"github.com/superiority-dev/thumbhash/internal/ycbcr"
 )
 
 // reciprocals holds 1/a for each alpha byte a.
@@ -16,8 +18,8 @@ var reciprocals = func() (t [256]float64) {
 }()
 
 // Straight appends img's pixels to dst in row order, each as the 8-bit
-// straight RGBA that [color.NRGBAModel] converts it to. It reads NRGBA and
-// RGBA images from their pixel slices, and any other image through At.
+// straight RGBA that [color.NRGBAModel] converts it to. It reads NRGBA, RGBA
+// and YCbCr images from their pixel slices, and any other image through At.
 func Straight(dst []byte, img image.Image) []byte {
 	b := img.Bounds()
 	if b.Empty() {
@@ -49,6 +51,43 @@ func Straight(dst []byte, img image.Image) []byte {
 
 			for i := 0; i < len(row); i += 4 {
 				unpremultiply((*[4]byte)(outRow[i:i+4]), (*[4]byte)(row[i:i+4]))
+			}
+		}
+
+		return dst
+	case *image.YCbCr:
+		start := len(dst)
+		dst = slices.Grow(dst, 4*b.Dx()*b.Dy())[:start+4*b.Dx()*b.Dy()]
+		out := dst[start:]
+		x0 := b.Min.X
+
+		for y := b.Min.Y; y < b.Max.Y; y++ {
+			ys := img.Y[img.YOffset(x0, y):]
+			_ = ys[b.Dx()-1] // At checks the plane's length; slicing checks only its capacity
+			ys = ys[:b.Dx()]
+			c := img.COffset(x0, y)
+			cb, cr := img.Cb[c:], img.Cr[c:]
+			outRow := out[4*(y-b.Min.Y)*b.Dx():][:4*len(ys)]
+
+			// Chroma indexes as COffset computes them, truncating division included.
+			switch img.SubsampleRatio {
+			case image.YCbCrSubsampleRatio422, image.YCbCrSubsampleRatio420:
+				for x, v := range ys {
+					i := (x0+x)/2 - x0/2
+					r, g, bl := ycbcr.RGB(v, cb[i], cr[i])
+					*(*[4]byte)(outRow[4*x:]) = [4]byte{r, g, bl, 0xff}
+				}
+			case image.YCbCrSubsampleRatio411, image.YCbCrSubsampleRatio410:
+				for x, v := range ys {
+					i := (x0+x)/4 - x0/4
+					r, g, bl := ycbcr.RGB(v, cb[i], cr[i])
+					*(*[4]byte)(outRow[4*x:]) = [4]byte{r, g, bl, 0xff}
+				}
+			default:
+				for x, v := range ys {
+					r, g, bl := ycbcr.RGB(v, cb[x], cr[x])
+					*(*[4]byte)(outRow[4*x:]) = [4]byte{r, g, bl, 0xff}
+				}
 			}
 		}
 
