@@ -10,15 +10,15 @@ const paletteSize = 64
 
 var kinds = []imageKind{
 	kindNRGBA, kindRGBA, kindRGBA64, kindNRGBA64, kindGray, kindGray16, kindYCbCr444,
-	kindYCbCr420, kindNYCbCrA, kindPaletted, kindCMYK, kindAlpha, kindAlpha16, kindCustom,
+	kindYCbCr420, kindNYCbCrA, kindPaletted, kindCMYK, kindAlpha, kindAlpha16,
 }
 
 // wide lists the kinds that store 16 bits per channel.
 var wide = []imageKind{kindRGBA64, kindNRGBA64, kindGray16, kindAlpha16}
 
 // imageKind is the type a test image is stored as: one of package image's
-// pixel-buffer types, YCbCr at two subsampling ratios, or custom. Its name
-// appears in case IDs, as in type/gray/opaque/33x41.
+// pixel-buffer types, with YCbCr at two subsampling ratios. Its name appears
+// in case IDs, as in type/gray/opaque/33x41.
 type imageKind uint8
 
 const (
@@ -35,13 +35,12 @@ const (
 	kindCMYK
 	kindAlpha
 	kindAlpha16
-	kindCustom
 )
 
 func (k imageKind) String() string {
 	return [...]string{
 		"nrgba", "rgba", "rgba64", "nrgba64", "gray", "gray16", "ycbcr444",
-		"ycbcr420", "nycbcra", "paletted", "cmyk", "alpha", "alpha16", "custom",
+		"ycbcr420", "nycbcra", "paletted", "cmyk", "alpha", "alpha16",
 	}[k]
 }
 
@@ -59,24 +58,6 @@ func (k imageKind) carriesAlpha() bool {
 
 	return true
 }
-
-// custom hides an NRGBA behind an image type and a color type the encoder
-// has no fast path for.
-type custom struct {
-	img *image.NRGBA
-}
-
-func (c custom) ColorModel() color.Model { return color.ModelFunc(toCustom) }
-
-func (c custom) Bounds() image.Rectangle { return c.img.Bounds() }
-
-func (c custom) At(x, y int) color.Color { return customColor{c.img.NRGBAAt(x, y)} }
-
-type customColor struct {
-	c color.NRGBA
-}
-
-func (c customColor) RGBA() (r, g, b, a uint32) { return c.c.RGBA() }
 
 // convert stores src in an image of the given kind.
 func convert(kind imageKind, src *image.NRGBA) image.Image {
@@ -118,8 +99,6 @@ func convert(kind imageKind, src *image.NRGBA) image.Image {
 		return drawInto(image.NewAlpha(b), src)
 	case kindAlpha16:
 		return drawInto(image.NewAlpha16(b), src)
-	case kindCustom:
-		return custom{src}
 	}
 
 	panic("testimage: unknown image kind")
@@ -170,12 +149,4 @@ func palette(withAlpha bool) color.Palette {
 	}
 
 	return p
-}
-
-func toCustom(c color.Color) color.Color {
-	if c, ok := c.(customColor); ok {
-		return c
-	}
-
-	return customColor{color.NRGBAModel.Convert(c).(color.NRGBA)}
 }

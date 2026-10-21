@@ -94,6 +94,8 @@ func Straight(dst []byte, img image.Image) []byte {
 		return dst
 	}
 
+	// Every type in package image also implements image.RGBA64Image, so a fast
+	// path on that interface would leave this loop without a type to test it.
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
