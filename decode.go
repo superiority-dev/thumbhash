@@ -28,6 +28,37 @@ func Decode(hash []byte) (*image.NRGBA, error) {
 	return img, nil
 }
 
+// DecodeInto writes the image [Decode] would return into the top left corner
+// of dst, which must be at least [DecodedSize] pixels on each side, and
+// returns the rectangle it filled. On [ErrDestinationTooSmall] or
+// [ErrInvalidHash] it leaves dst unchanged. A successful call allocates
+// nothing. DecodeInto is safe for concurrent use with different destinations.
+func DecodeInto(dst *image.NRGBA, hash []byte) (image.Rectangle, error) {
+	// A side past the int range wraps negative in Size, and is exact as a uint.
+	if s := dst.Rect.Size(); dst.Rect.Empty() || uint(s.X) < DecodedSize || uint(s.Y) < DecodedSize {
+		return image.Rectangle{}, fmt.Errorf("%w: %v, need at least %dx%d",
+			ErrDestinationTooSmall, dst.Rect, DecodedSize, DecodedSize)
+	}
+
+	if err := checkLength(hash); err != nil {
+		return image.Rectangle{}, err
+	}
+
+	var buf [4 * DecodedSize * DecodedSize]float64
+
+	w, h, vals := codec.Render(&buf, hash)
+
+	r := image.Rectangle{Min: dst.Rect.Min, Max: dst.Rect.Min.Add(image.Pt(w, h))}
+	for y := range h {
+		row := dst.Pix[dst.PixOffset(r.Min.X, r.Min.Y+y):][:4*w]
+		for i, v := range vals[4*w*y : 4*w*(y+1)] {
+			row[i] = uint8(v)
+		}
+	}
+
+	return r, nil
+}
+
 // AspectRatio returns the width over the height of the image hash was made
 // from, approximately: a hash keeps the shorter side over the longer rounded
 // to sevenths, or to fifths for an image with alpha, and Encode never stores

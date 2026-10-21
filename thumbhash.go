@@ -13,7 +13,8 @@ import (
 // MaxSize is 100, the largest width or height Encode accepts.
 const MaxSize = format.MaxSize
 
-// DecodedSize is 32, the longest side of an image Decode returns.
+// DecodedSize is 32, the longest side of an image Decode returns and the
+// shortest DecodeInto accepts.
 const DecodedSize = codec.DecodedSize
 
 var (
@@ -27,4 +28,8 @@ var (
 	// ErrInvalidHash is returned for a hash shorter than five bytes, or than its
 	// header says it is.
 	ErrInvalidHash = errors.New("thumbhash: invalid hash")
+
+	// ErrDestinationTooSmall is returned by [DecodeInto] for a destination
+	// under [DecodedSize] pixels on either side.
+	ErrDestinationTooSmall = errors.New("thumbhash: destination too small")
 )
