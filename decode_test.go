@@ -4,6 +4,8 @@ import (
 	"errors"
 	"image"
 	"math"
+	"math/rand/v2"
+	"sync"
 	"testing"
 
 	"github.com/superiority-dev/thumbhash/internal/codec"
@@ -43,6 +45,51 @@ func TestDecodeReference(t *testing.T) {
 		ratio, err := AspectRatio(r.Hash)
 		if err != nil || math.Float64bits(ratio) != math.Float64bits(r.Ratio) {
 			t.Errorf("%s: aspect ratio %v, %v; reference %v", r.ID, ratio, err, r.Ratio)
+		}
+	}
+}
+
+// TestDecodeConcurrent requires Decode to return the reference's images when
+// called from several goroutines at once, none sharing memory with a later
+// call's.
+func TestDecodeConcurrent(t *testing.T) {
+	decodeRef, err := testimage.DecodeReference()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const goroutines = 8
+
+	kept := make([][]*image.NRGBA, goroutines)
+
+	var wg sync.WaitGroup
+
+	for g := range goroutines {
+		kept[g] = make([]*image.NRGBA, len(decodeRef.Results))
+
+		wg.Go(func() {
+			for _, i := range rand.New(rand.NewPCG(uint64(g), 0)).Perm(len(decodeRef.Results)) {
+				img, err := Decode(decodeRef.Results[i].Hash)
+				if err != nil {
+					t.Errorf("%s: %v", decodeRef.Results[i].ID, err)
+				}
+
+				kept[g][i] = img
+			}
+		})
+	}
+
+	wg.Wait()
+
+	for g := range goroutines {
+		for i, r := range decodeRef.Results {
+			if kept[g][i] == nil {
+				continue
+			}
+
+			if !r.MatchesRGBA(kept[g][i].Pix) {
+				t.Errorf("goroutine %d, %s: decoded bytes differ from the reference's", g, r.ID)
+			}
 		}
 	}
 }

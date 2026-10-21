@@ -4,19 +4,11 @@ import (
 	"math"
 	"slices"
 
-	"github.com/superiority-dev/thumbhash/internal/fdlibm"
 	"github.com/superiority-dev/thumbhash/internal/format"
 )
 
 // maxRows is the most rows a column of coefficients has.
 const maxRows = format.LumLong
-
-// A pixel's cosines along x take cosStride slots: format.LumLong of them,
-// padded to a power of two so cosMask keeps any index inside the row.
-const (
-	cosStride = 8
-	cosMask   = cosStride - 1
-)
 
 // alphas holds, for each alpha byte a, a/255 and a/255/255: the pixel's alpha
 // and the weight its color bytes are multiplied by.
@@ -70,7 +62,7 @@ func (e *Encoder) Unrounded(pix []byte, w, h int) ([]float64, bool) {
 	vals = append(vals, rx, ry)
 
 	// The cosines the channels use: fx[x*cosStride+cx] and fy[cy*h+y].
-	e.cosines(w, h)
+	e.fx, e.fy = encodeCosines(w).x, encodeCosines(h).y
 
 	e.ac = e.ac[:0]
 	lDC, lScale := e.transform(e.l, w, h, nx, ny)
@@ -140,25 +132,6 @@ func (e *Encoder) channelsAlpha(pix []byte) {
 		e.p[i] = float64((r+g)/2) - b
 		e.q[i] = r - g
 		e.a[i] = entry.alpha
-	}
-}
-
-// cosines sets e.fx and e.fy to the cosines of a w by h image:
-// fx[x*cosStride+c] and fy[c*h+y] are those of math.Pi/w*c*(x+0.5) and
-// math.Pi/h*c*(y+0.5), multiplied in that order.
-func (e *Encoder) cosines(w, h int) {
-	e.fx, e.fy = grow(e.fx, cosStride*w), grow(e.fy, format.LumLong*h)
-
-	for x := range w {
-		for c := range format.LumLong {
-			e.fx[x*cosStride+c] = fdlibm.Cos(math.Pi / float64(w) * float64(c) * (float64(x) + 0.5))
-		}
-	}
-
-	for y := range h {
-		for c := range format.LumLong {
-			e.fy[c*h+y] = fdlibm.Cos(math.Pi / float64(h) * float64(c) * (float64(y) + 0.5))
-		}
 	}
 }
 

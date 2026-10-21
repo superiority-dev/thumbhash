@@ -3,7 +3,6 @@ package codec
 import (
 	"math"
 
-	"github.com/superiority-dev/thumbhash/internal/fdlibm"
 	"github.com/superiority-dev/thumbhash/internal/format"
 )
 
@@ -81,22 +80,8 @@ func Render(dst *[4 * DecodedSize * DecodedSize]float64, hash []byte) (w, h int,
 		w, h = int(math.Round(float64(DecodedSize*ratio))), DecodedSize
 	}
 
-	// The cosines: fx[x*cosStride+cx], and fy[y*cosStride+cy] already doubled,
-	// each of math.Pi/n*(i+0.5)*c multiplied in that order.
-	var fx, fy [DecodedSize * cosStride]float64
-
-	for x := range w {
-		for c := range format.LumLong {
-			fx[x*cosStride+c] = fdlibm.Cos(math.Pi / float64(w) * (float64(x) + 0.5) * float64(c))
-		}
-	}
-
-	for y := range h {
-		for c := range format.LumLong {
-			v := fdlibm.Cos(math.Pi / float64(h) * (float64(y) + 0.5) * float64(c))
-			fy[y*cosStride+c] = v * 2
-		}
-	}
+	// The cosines: fx[x*cosStride+cx], and fy[y*cosStride+cy] already doubled.
+	fx, fy := decodeCosines(w).x, decodeCosines(h).y
 
 	// For L and A, each coefficient times its cosine at each pixel column: the
 	// product the reference rounds first.

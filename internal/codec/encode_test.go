@@ -7,6 +7,7 @@ import (
 	"iter"
 	"math"
 	"math/rand/v2"
+	"slices"
 	"testing"
 
 	"github.com/superiority-dev/thumbhash/internal/fdlibm"
@@ -75,6 +76,37 @@ func TestUnroundedMatchesSlow(t *testing.T) {
 	}
 }
 
+// TestSlowUnroundedLeavesTables requires slowUnrounded to leave the shared
+// cosine tables alone.
+func TestSlowUnroundedLeavesTables(t *testing.T) {
+	for _, id := range []string{"noise/opaque/8x8", "noise/alpha-any/9x7"} {
+		c, ok := testimage.Lookup(id)
+		if !ok {
+			t.Fatalf("no case %s", id)
+		}
+
+		img := c.Image()
+		s := img.Bounds().Size()
+		pix := Straight(nil, img)
+
+		var e Encoder
+
+		first, _ := e.Unrounded(pix, s.X, s.Y)
+		first = slices.Clone(first)
+
+		e.slowUnrounded(pix, s.X, s.Y)
+
+		again, _ := e.Unrounded(pix, s.X, s.Y)
+		if len(again) != len(first) {
+			t.Fatalf("%s: %d values after slowUnrounded, %d before", id, len(again), len(first))
+		}
+
+		if i := firstDiff(again, first); i >= 0 {
+			t.Fatalf("%s: value %d is %v after slowUnrounded, %v before", id, i, again[i], first[i])
+		}
+	}
+}
+
 // TestTransformPairs requires transform to have a kernel for every pair of
 // columns it sums in one pass: at the luminance layout of every accepted size,
 // opaque and with alpha, and at alpha's layout.
@@ -103,7 +135,7 @@ func TestTransformPairs(t *testing.T) {
 				}
 			}()
 
-			e.cosines(1, 1)
+			e.fx, e.fy = encodeCosines(1).x, encodeCosines(1).y
 			e.ac = e.ac[:0]
 			e.transform([]float64{0}, 1, 1, l[0], l[1])
 		}()

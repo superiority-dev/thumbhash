@@ -5,6 +5,8 @@ import (
 	"errors"
 	"image"
 	"math"
+	"math/rand/v2"
+	"sync"
 	"testing"
 
 	"github.com/superiority-dev/thumbhash/internal/codec"
@@ -71,6 +73,36 @@ func TestEncodeReference(t *testing.T) {
 	}
 }
 
+// TestEncodeConcurrent requires Encode to return the reference's hashes when
+// called from several goroutines at once.
+func TestEncodeConcurrent(t *testing.T) {
+	ref, err := testimage.Reference()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := testimage.Cases()
+
+	const goroutines = 8
+
+	var wg sync.WaitGroup
+
+	for g := range goroutines {
+		wg.Go(func() {
+			for _, i := range rand.New(rand.NewPCG(uint64(g), 0)).Perm(len(cases)) {
+				hash, err := Encode(cases[i].Image())
+				if err != nil || !bytes.Equal(hash, ref.Results[i].Hash) {
+					t.Errorf("%s: Encode returns %x, %v; reference %x", cases[i].ID, hash, err, ref.Results[i].Hash)
+
+					return
+				}
+			}
+		})
+	}
+
+	wg.Wait()
+}
+
 // TestEncodeSize requires ErrEmptyImage for an image with no pixels, even when
 // its other side is too large, ErrImageTooLarge past MaxSize, and no error at
 // 1x1 and at MaxSize by MaxSize.
@@ -103,6 +135,27 @@ func TestEncodeSize(t *testing.T) {
 	for _, s := range []image.Point{{1, 1}, {MaxSize, MaxSize}} {
 		if _, err := Encode(image.NewNRGBA(image.Rectangle{Max: s})); err != nil {
 			t.Errorf("%v: %v", s, err)
+		}
+	}
+}
+
+func TestEncodeAllocs(t *testing.T) {
+	// An opaque NRGBA and a translucent RGBA, each read by its own fast path.
+	for _, id := range []string{"type/nrgba/opaque/100x75", "type/rgba/alpha/100x75"} {
+		c, ok := testimage.Lookup(id)
+		if !ok {
+			t.Fatalf("no case %s", id)
+		}
+
+		img := c.Image()
+
+		var e Encoder
+		if _, err := e.Encode(img); err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+
+		if n := testing.AllocsPerRun(20, func() { _, _ = e.Encode(img) }); n != 1 {
+			t.Errorf("%s: %v allocations per Encode, want 1", id, n)
 		}
 	}
 }

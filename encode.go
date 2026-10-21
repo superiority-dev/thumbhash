@@ -3,9 +3,13 @@ package thumbhash
 import (
 	"fmt"
 	"image"
+	"sync"
 
 	"github.com/superiority-dev/thumbhash/internal/codec"
 )
+
+// encoders holds idle Encoders for Encode to reuse.
+var encoders = sync.Pool{New: func() any { return new(Encoder) }}
 
 // An Encoder computes ThumbHashes and reuses its memory between calls. The
 // zero value is ready to use. An Encoder should be used by one goroutine at a
@@ -38,7 +42,9 @@ func (e *Encoder) Encode(img image.Image) ([]byte, error) {
 // RGBA that [color.NRGBAModel] converts it to. Encode is safe for concurrent
 // use.
 func Encode(img image.Image) ([]byte, error) {
-	var e Encoder
+	e := encoders.Get().(*Encoder)
+	hash, err := e.Encode(img)
+	encoders.Put(e)
 
-	return e.Encode(img)
+	return hash, err
 }
