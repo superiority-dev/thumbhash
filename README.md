@@ -36,15 +36,15 @@ package's time.
 
 | package | language | ARM | Intel or AMD |
 |---|---|---|---|
-| [go.n16f.net/thumbhash](https://pkg.go.dev/go.n16f.net/thumbhash) | Go | 3.2x to 5.2x | 3.8x to 6.4x |
-| [evanw/thumbhash](https://github.com/evanw/thumbhash) | JavaScript | 4.7x to 6.9x | 4.2x to 6.6x |
+| [go.n16f.net/thumbhash](https://pkg.go.dev/go.n16f.net/thumbhash) | Go | 3.2x to 5.2x | 3.8x to 6.3x |
+| [evanw/thumbhash](https://github.com/evanw/thumbhash) | JavaScript | 4.7x to 6.9x | 4.1x to 6.2x |
 
 **Decoding**
 
 | package | language | ARM | Intel or AMD |
 |---|---|---|---|
-| [go.n16f.net/thumbhash](https://pkg.go.dev/go.n16f.net/thumbhash) | Go | 8.26x to 10.6x | 6.92x to 10.5x |
-| [evanw/thumbhash](https://github.com/evanw/thumbhash) | JavaScript | 7.55x to 9.95x | 5.71x to 9.13x |
+| [go.n16f.net/thumbhash](https://pkg.go.dev/go.n16f.net/thumbhash) | Go | 8.55x to 10.8x | 7.26x to 10.9x |
+| [evanw/thumbhash](https://github.com/evanw/thumbhash) | JavaScript | 7.82x to 10.3x | 5.91x to 9.41x |
 
 How it was measured, the exact versions and every number are in
 [BENCH.md](BENCH.md).

@@ -20,12 +20,17 @@ const (
 // use the first stored.
 var (
 	encodeCache [format.MaxSize + 1]atomic.Pointer[cosines]
-	decodeCache [DecodedSize + 1]atomic.Pointer[cosines]
+	decodeCache [DecodedSize + 1]atomic.Pointer[decodeTables]
 )
 
 // cosines holds one side length's cosines for format.LumLong components, x
 // padded to cosStride a pixel.
 type cosines struct{ x, y []float64 }
+
+// decodeTables holds one side length's decoder cosines, a row per pixel.
+type decodeTables struct {
+	x, y [][cosStride]float64
+}
 
 // encodeCosines returns the encoder's cosines for side n: x[i*cosStride+c] and
 // y[c*n+i] are both the cosine of math.Pi/n*c*(i+0.5), multiplied in that
@@ -50,19 +55,19 @@ func encodeCosines(n int) *cosines {
 	return t
 }
 
-// decodeCosines returns the decoder's cosines for side n: x[i*cosStride+c] is
-// the cosine of math.Pi/n*(i+0.5)*c, multiplied in that order, and
-// y[i*cosStride+c] is twice it.
-func decodeCosines(n int) *cosines {
+// decodeCosines returns the decoder's cosines for side n: x[i][c] is the
+// cosine of math.Pi/n*(i+0.5)*c, multiplied in that order, and y[i][c] is
+// twice it.
+func decodeCosines(n int) *decodeTables {
 	if t := decodeCache[n].Load(); t != nil {
 		return t
 	}
 
-	t := &cosines{x: make([]float64, cosStride*n), y: make([]float64, cosStride*n)}
+	t := &decodeTables{x: make([][cosStride]float64, n), y: make([][cosStride]float64, n)}
 	for i := range n {
 		for c := range format.LumLong {
 			v := fdlibm.Cos(math.Pi / float64(n) * (float64(i) + 0.5) * float64(c))
-			t.x[i*cosStride+c], t.y[i*cosStride+c] = v, v*2
+			t.x[i][c], t.y[i][c] = v, v*2
 		}
 	}
 

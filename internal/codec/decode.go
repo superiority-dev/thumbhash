@@ -80,41 +80,55 @@ func Render(dst *[4 * DecodedSize * DecodedSize]float64, hash []byte) (w, h int,
 		w, h = int(math.Round(float64(DecodedSize*ratio))), DecodedSize
 	}
 
-	// The cosines: fx[x*cosStride+cx], and fy[y*cosStride+cy] already doubled.
+	// The cosines a row per pixel: fx[x][cx], and fy[y][cy] already doubled.
 	fx, fy := decodeCosines(w).x, decodeCosines(h).y
+
+	// Each channel's coefficients as slices of one length.
+	lval := l.v[:l.n]
+	lcx, lcy := l.cx[:len(lval)], l.cy[:len(lval)]
+	pval := p.v[:p.n]
+	pcx, pcy, qval := p.cx[:len(pval)], p.cy[:len(pval)], q.v[:len(pval)]
+
+	// A has at most alphaACSlots coefficients.
+	aval := (*[alphaACSlots]float64)(a.v[:alphaACSlots])[:a.n]
+	acx, acy := a.cx[:len(aval)], a.cy[:len(aval)]
 
 	// For L and A, each coefficient times its cosine at each pixel column: the
 	// product the reference rounds first.
-	var lfx [DecodedSize * acSlots]float64
+	var lfxs [DecodedSize][acSlots]float64
 
-	var afx [DecodedSize * alphaACSlots]float64
+	var afxs [DecodedSize][alphaACSlots]float64
 
-	for x := range w {
-		cosX := (*[cosStride]float64)(fx[x*cosStride : x*cosStride+cosStride])
-		for j := range l.n {
-			lfx[x*acSlots+j] = l.v[j] * cosX[l.cx[j]&cosMask]
+	lfx, afx := lfxs[:len(fx)], afxs[:len(fx)]
+
+	for x := range fx {
+		cosX := &fx[x]
+
+		row := lfx[x][:len(lval)]
+		for j, v := range lval {
+			row[j] = v * cosX[lcx[j]&cosMask]
 		}
 
-		for j := range a.n {
-			afx[x*alphaACSlots+j] = a.v[j] * cosX[a.cx[j]&cosMask]
+		arow := afx[x][:len(aval)]
+		for j, v := range aval {
+			arow[j] = v * cosX[acx[j]&cosMask]
 		}
 	}
 
 	vals = dst[: 0 : 4*w*h]
 
-	for y := range h {
-		cosY := (*[cosStride]float64)(fy[y*cosStride : y*cosStride+cosStride])
+	for y := range fy {
+		cosY := &fy[y]
 
 		// Four pixels at a time, each summing its terms in the reference's
 		// order on its own accumulators.
-		x := 0
-		for ; x+4 <= w; x += 4 {
+		for x := 0; x < len(fx)-3; x += 4 {
 			l0, l1, l2, l3 := lDC, lDC, lDC, lDC
-			lfx0, lfx1 := lfx[x*acSlots:][:l.n], lfx[(x+1)*acSlots:][:l.n]
-			lfx2, lfx3 := lfx[(x+2)*acSlots:][:l.n], lfx[(x+3)*acSlots:][:l.n]
+			lfx0, lfx1 := lfx[x][:len(lcy)], lfx[x+1][:len(lcy)]
+			lfx2, lfx3 := lfx[x+2][:len(lcy)], lfx[x+3][:len(lcy)]
 
-			for j := range l.n {
-				cos := cosY[l.cy[j]&cosMask]
+			for j, cy := range lcy {
+				cos := cosY[cy&cosMask]
 				l0 += float64(lfx0[j] * cos)
 				l1 += float64(lfx1[j] * cos)
 				l2 += float64(lfx2[j] * cos)
@@ -123,28 +137,27 @@ func Render(dst *[4 * DecodedSize * DecodedSize]float64, hash []byte) (w, h int,
 
 			p0, p1, p2, p3 := pDC, pDC, pDC, pDC
 			q0, q1, q2, q3 := qDC, qDC, qDC, qDC
-			cosX0, cosX1 := (*[cosStride]float64)(fx[x*cosStride:x*cosStride+cosStride]), (*[cosStride]float64)(fx[(x+1)*cosStride:(x+1)*cosStride+cosStride])
-			cosX2, cosX3 := (*[cosStride]float64)(fx[(x+2)*cosStride:(x+2)*cosStride+cosStride]), (*[cosStride]float64)(fx[(x+3)*cosStride:(x+3)*cosStride+cosStride])
+			cosX0, cosX1, cosX2, cosX3 := &fx[x], &fx[x+1], &fx[x+2], &fx[x+3]
 
-			for j := range p.n {
-				cx, cos := p.cx[j]&cosMask, cosY[p.cy[j]&cosMask]
+			for j, v := range pval {
+				cx, cos := pcx[j]&cosMask, cosY[pcy[j]&cosMask]
 				xy0, xy1, xy2, xy3 := float64(cosX0[cx]*cos), float64(cosX1[cx]*cos), float64(cosX2[cx]*cos), float64(cosX3[cx]*cos)
-				p0 += float64(p.v[j] * xy0)
-				p1 += float64(p.v[j] * xy1)
-				p2 += float64(p.v[j] * xy2)
-				p3 += float64(p.v[j] * xy3)
-				q0 += float64(q.v[j] * xy0)
-				q1 += float64(q.v[j] * xy1)
-				q2 += float64(q.v[j] * xy2)
-				q3 += float64(q.v[j] * xy3)
+				p0 += float64(v * xy0)
+				p1 += float64(v * xy1)
+				p2 += float64(v * xy2)
+				p3 += float64(v * xy3)
+				q0 += float64(qval[j] * xy0)
+				q1 += float64(qval[j] * xy1)
+				q2 += float64(qval[j] * xy2)
+				q3 += float64(qval[j] * xy3)
 			}
 
 			a0, a1, a2, a3 := aDC, aDC, aDC, aDC
-			afx0, afx1 := afx[x*alphaACSlots:][:a.n], afx[(x+1)*alphaACSlots:][:a.n]
-			afx2, afx3 := afx[(x+2)*alphaACSlots:][:a.n], afx[(x+3)*alphaACSlots:][:a.n]
+			afx0, afx1 := afx[x][:len(acy)], afx[x+1][:len(acy)]
+			afx2, afx3 := afx[x+2][:len(acy)], afx[x+3][:len(acy)]
 
-			for j := range a.n {
-				cos := cosY[a.cy[j]&cosMask]
+			for j, cy := range acy {
+				cos := cosY[cy&cosMask]
 				a0 += float64(afx0[j] * cos)
 				a1 += float64(afx1[j] * cos)
 				a2 += float64(afx2[j] * cos)
@@ -157,22 +170,23 @@ func Render(dst *[4 * DecodedSize * DecodedSize]float64, hash []byte) (w, h int,
 			vals = appendRGBA(vals, l3, p3, q3, a3)
 		}
 
-		for ; x < w; x++ {
-			cosX := (*[cosStride]float64)(fx[x*cosStride : x*cosStride+cosStride])
+		// The pixels left over, one at a time.
+		for x := len(fx) &^ 3; x < len(fx); x++ {
+			cosX := &fx[x]
 			lv, pv, qv, av := lDC, pDC, qDC, aDC
 
-			for j, lf := range lfx[x*acSlots : x*acSlots+l.n] {
-				lv += float64(lf * cosY[l.cy[j]&cosMask])
+			for j, lf := range lfx[x][:len(lcy)] {
+				lv += float64(lf * cosY[lcy[j]&cosMask])
 			}
 
-			for j := range p.n {
-				xy := float64(cosX[p.cx[j]&cosMask] * cosY[p.cy[j]&cosMask])
-				pv += float64(p.v[j] * xy)
-				qv += float64(q.v[j] * xy)
+			for j, v := range pval {
+				xy := float64(cosX[pcx[j]&cosMask] * cosY[pcy[j]&cosMask])
+				pv += float64(v * xy)
+				qv += float64(qval[j] * xy)
 			}
 
-			for j, af := range afx[x*alphaACSlots : x*alphaACSlots+a.n] {
-				av += float64(af * cosY[a.cy[j]&cosMask])
+			for j, af := range afx[x][:len(acy)] {
+				av += float64(af * cosY[acy[j]&cosMask])
 			}
 
 			vals = appendRGBA(vals, lv, pv, qv, av)

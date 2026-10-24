@@ -37,23 +37,23 @@ This package's time, then every other implementation as a multiple of it.
 
 | image | this package | go.n16f.net | original |
 |---|---|---|---|
-| 32x24, opaque | 9.49 µs | 5.2x | 6.9x |
-| 100x75, opaque | 91.41 µs | 3.7x | 5.8x |
-| 100x100, opaque | 130.44 µs | 3.8x | 5.6x |
-| 32x24, alpha | 12.36 µs | 4.5x | 5.9x |
-| 100x75, alpha | 119.23 µs | 3.2x | 4.9x |
-| 100x100, alpha | 160.50 µs | 3.2x | 4.7x |
+| 32x24, opaque | 9.47 µs | 5.2x | 6.9x |
+| 100x75, opaque | 91.40 µs | 3.7x | 5.7x |
+| 100x100, opaque | 130.29 µs | 3.8x | 5.6x |
+| 32x24, alpha | 12.34 µs | 4.6x | 5.9x |
+| 100x75, alpha | 118.75 µs | 3.2x | 4.9x |
+| 100x100, alpha | 160.39 µs | 3.2x | 4.7x |
 
 **amd64**
 
 | image | this package | go.n16f.net | original |
 |---|---|---|---|
-| 32x24, opaque | 9.92 µs | 6.4x | 6.6x |
-| 100x75, opaque | 90.46 µs | 4.9x | 5.6x |
-| 100x100, opaque | 149.31 µs | 4.2x | 4.5x |
-| 32x24, alpha | 13.62 µs | 5.3x | 5.4x |
-| 100x75, alpha | 126.50 µs | 3.9x | 4.4x |
-| 100x100, alpha | 169.71 µs | 3.8x | 4.2x |
+| 32x24, opaque | 10.25 µs | 6.3x | 6.2x |
+| 100x75, opaque | 93.78 µs | 4.7x | 5.1x |
+| 100x100, opaque | 149.41 µs | 4.2x | 4.5x |
+| 32x24, alpha | 13.91 µs | 5.2x | 5.2x |
+| 100x75, alpha | 126.94 µs | 3.9x | 4.3x |
+| 100x100, alpha | 172.49 µs | 3.8x | 4.1x |
 
 ## Decoding
 
@@ -64,23 +64,23 @@ implementation as a multiple of it.
 
 | image | this package | go.n16f.net | original |
 |---|---|---|---|
-| 32x24, opaque | 13.74 µs | 9.68x | 8.40x |
-| 100x75, opaque | 13.79 µs | 9.61x | 8.36x |
-| 100x100, opaque | 19.70 µs | 10.6x | 9.95x |
-| 32x24, alpha | 16.56 µs | 8.28x | 7.67x |
-| 100x75, alpha | 16.58 µs | 8.26x | 7.55x |
-| 100x100, alpha | 20.10 µs | 8.53x | 7.85x |
+| 32x24, opaque | 13.31 µs | 9.86x | 8.64x |
+| 100x75, opaque | 13.31 µs | 9.88x | 8.70x |
+| 100x100, opaque | 19.00 µs | 10.8x | 10.3x |
+| 32x24, alpha | 15.91 µs | 8.55x | 7.82x |
+| 100x75, alpha | 15.88 µs | 8.56x | 7.91x |
+| 100x100, alpha | 19.26 µs | 8.84x | 8.17x |
 
 **amd64**
 
 | image | this package | go.n16f.net | original |
 |---|---|---|---|
-| 32x24, opaque | 17.84 µs | 9.98x | 8.12x |
-| 100x75, opaque | 18.07 µs | 9.85x | 8.05x |
-| 100x100, opaque | 25.73 µs | 10.5x | 9.13x |
-| 32x24, alpha | 27.08 µs | 6.92x | 5.71x |
-| 100x75, alpha | 26.95 µs | 6.94x | 5.77x |
-| 100x100, alpha | 32.81 µs | 7.05x | 5.89x |
+| 32x24, opaque | 17.55 µs | 10.2x | 8.22x |
+| 100x75, opaque | 17.69 µs | 10.2x | 8.21x |
+| 100x100, opaque | 24.91 µs | 10.9x | 9.41x |
+| 32x24, alpha | 26.03 µs | 7.36x | 5.91x |
+| 100x75, alpha | 25.73 µs | 7.32x | 6.01x |
+| 100x100, alpha | 31.71 µs | 7.26x | 6.07x |
 
 ## Memory
 
@@ -90,7 +90,7 @@ Allocated per call by the Go implementations, the same on both architectures.
 |---|---|---|
 | this package | 24 to 32 B, 1 allocation | 3,136 to 4,160 B, 2 allocations |
 | this package, `DecodeInto` | | 0 B |
-| go.n16f.net | 600 to 688 B, 6 to 8 allocations | 84,128 to 135,976 B, 1,488 to 2,068 allocations |
+| go.n16f.net | 600 to 689 B, 6 to 8 allocations | 84,128 to 135,976 B, 1,488 to 2,068 allocations |
 
 ## Agreement with the original
 
