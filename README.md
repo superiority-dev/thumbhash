@@ -1,5 +1,9 @@
 # thumbhash
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/superiority-dev/thumbhash.svg)](https://pkg.go.dev/github.com/superiority-dev/thumbhash)
+[![CI](https://github.com/superiority-dev/thumbhash/actions/workflows/ci.yml/badge.svg)](https://github.com/superiority-dev/thumbhash/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/superiority-dev/thumbhash/graph/badge.svg)](https://codecov.io/gh/superiority-dev/thumbhash)
+
 Fast ThumbHash for Go, with the same result on every machine.
 
 A [ThumbHash](https://evanw.github.io/thumbhash/) is a blurred preview of an
