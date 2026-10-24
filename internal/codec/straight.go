@@ -132,14 +132,3 @@ func unpremultiply(dst, src *[4]byte) {
 func quotient(n uint32, inv float64) uint32 {
 	return uint32(float64(float64(n)*inv) + 0x1p-20)
 }
-
-// allOpaque reports whether every pixel in the RGBA bytes pix has alpha 255.
-func allOpaque(pix []byte) bool {
-	for i := 3; i < len(pix); i += 4 {
-		if pix[i] != 0xff {
-			return false
-		}
-	}
-
-	return true
-}
